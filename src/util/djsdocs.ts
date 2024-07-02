@@ -1,6 +1,7 @@
 import process from 'node:process';
 import { sql } from '@vercel/postgres';
 import { container } from 'tsyringe';
+import { logger } from './logger.js';
 
 export const kDjsVersions = Symbol('DJS_VERSIONS');
 
@@ -16,6 +17,7 @@ export type DjsVersions = {
 
 export async function fetchDjsVersions(): Promise<DjsVersions> {
 	if (process.env.IS_LOCAL_DEV) {
+		logger.debug('NOTE: Only main is returned in a local development environment');
 		const devEnvVersions = new Map<string, string[]>();
 		devEnvVersions.set('discord.js', ['main']);
 
@@ -48,7 +50,10 @@ export async function fetchDjsVersions(): Promise<DjsVersions> {
 			packages: [...packages],
 			versions,
 		};
-	} catch {
+	} catch (error_) {
+		const error = error_ as Error;
+		logger.error(error, error.message);
+
 		return {
 			rows: [],
 			versions: new Map<string, string[]>(),
@@ -57,12 +62,24 @@ export async function fetchDjsVersions(): Promise<DjsVersions> {
 	}
 }
 
-export async function prepareDjsVersions() {
+export async function reloadDjsVersions() {
 	const res = await fetchDjsVersions();
-	container.register(kDjsVersions, { useValue: res });
+	container.register<DjsVersions>(kDjsVersions, { useValue: res });
+	logger.debug({ res }, 'Registered container after fetching versions');
+
 	return res;
 }
 
 export function getDjsVersions() {
-	return container.resolve<DjsVersions>(kDjsVersions);
+	const versions = container.resolve<DjsVersions>(kDjsVersions);
+	logger.debug({ versions }, 'Retrieving versions from container');
+	if (!versions?.versions) {
+		return {
+			rows: [],
+			versions: new Map<string, string[]>(),
+			packages: [],
+		} satisfies DjsVersions;
+	}
+
+	return versions;
 }

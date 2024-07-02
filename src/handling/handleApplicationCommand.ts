@@ -1,10 +1,9 @@
 import process from 'node:process';
-import { hideLinkEmbed, hyperlink, inlineCode } from '@discordjs/builders';
+import { inlineCode } from '@discordjs/builders';
 import type { Collection } from '@discordjs/collection';
 import type { APIApplicationCommandInteraction } from 'discord-api-types/v10';
 import { ApplicationCommandType } from 'discord-api-types/v10';
 import type { Response } from 'polka';
-import { container } from 'tsyringe';
 import { algoliaResponse } from '../functions/algoliaResponse.js';
 import { resolveOptionsToDocsAutoComplete } from '../functions/autocomplete/docsAutoComplete.js';
 import { djsDocs } from '../functions/docs.js';
@@ -23,7 +22,7 @@ import type { TagReloadCommand } from '../interactions/tagreload.js';
 import type { TestTagCommand } from '../interactions/testtag.js';
 import type { ArgumentsOf } from '../util/argumentsOf.js';
 import { EMOJI_ID_CLYDE_BLURPLE, EMOJI_ID_DTYPES, EMOJI_ID_GUIDE } from '../util/constants.js';
-import { fetchDjsVersions, kDjsVersions } from '../util/djsdocs.js';
+import { reloadDjsVersions } from '../util/djsdocs.js';
 import { transformInteraction } from '../util/interactionOptions.js';
 import { prepareErrorResponse, prepareResponse } from '../util/respond.js';
 
@@ -73,7 +72,6 @@ export async function handleApplicationCommand(
 					castArgs.query,
 					EMOJI_ID_CLYDE_BLURPLE,
 					'discord',
-					castArgs.target,
 					castArgs.hide,
 				);
 				break;
@@ -90,7 +88,6 @@ export async function handleApplicationCommand(
 					castArgs.query,
 					EMOJI_ID_DTYPES,
 					'dtypes',
-					castArgs.target,
 					castArgs.hide,
 				);
 
@@ -107,7 +104,6 @@ export async function handleApplicationCommand(
 					castArgs.query,
 					EMOJI_ID_GUIDE,
 					'guide',
-					castArgs.target,
 					castArgs.hide,
 				);
 				break;
@@ -115,19 +111,19 @@ export async function handleApplicationCommand(
 
 			case 'mdn': {
 				const castArgs = args as ArgumentsOf<typeof MdnCommand>;
-				await mdnSearch(res, castArgs.query, castArgs.target, castArgs.hide);
+				await mdnSearch(res, castArgs.query, castArgs.hide);
 				break;
 			}
 
 			case 'node': {
 				const castArgs = args as ArgumentsOf<typeof NodeCommand>;
-				await nodeSearch(res, castArgs.query, castArgs.version, castArgs.target, castArgs.hide);
+				await nodeSearch(res, castArgs.query, castArgs.version, castArgs.hide);
 				break;
 			}
 
 			case 'tag': {
 				const castArgs = args as ArgumentsOf<typeof TagCommand>;
-				showTag(res, castArgs.query, tagCache, castArgs.target, castArgs.hide);
+				showTag(res, castArgs.query, tagCache, castArgs.hide);
 				break;
 			}
 
@@ -144,9 +140,7 @@ export async function handleApplicationCommand(
 			}
 
 			case 'reloadversions': {
-				const versions = await fetchDjsVersions();
-				container.register(kDjsVersions, { useValue: res });
-
+				await reloadDjsVersions();
 				prepareResponse(res, `Reloaded versions for all ${inlineCode('@discordjs')} packages.`, true);
 				break;
 			}
