@@ -1,9 +1,10 @@
+import { toTitlecase } from './misc.js';
 import { urlOption } from './url.js';
 
 export function toMdFilename(name: string) {
 	return name
 		.split('-')
-		.map((part) => `${part.at(0)?.toUpperCase()}${part.slice(1).toLowerCase()}`)
+		.map((part) => toTitlecase(part))
 		.join('_');
 }
 
@@ -43,14 +44,13 @@ function parseHeadline(text: string): Heading | null {
 	const label = groups.label ?? groups.onlylabel;
 
 	return {
-		docs_anchor: `#${label.replaceAll(' ', '-').toLowerCase()}`,
+		docs_anchor: `#${label.replaceAll(' ', '-').replaceAll(':', '').toLowerCase()}`,
 		label,
 		verb: groups.verb,
 		route: groups.route,
 	};
 }
 
-// https://raw.githubusercontent.com/discord/discord-api-docs/main/docs/resources/user/User.md
 // https://raw.githubusercontent.com/discord/discord-api-docs/main/docs/resources/User.md
 
 type ParsedSection = {
@@ -66,6 +66,8 @@ function cleanLine(line: string) {
 		.trim();
 }
 
+const IGNORE_LINE_PREFIXES = ['>', '---', '|'];
+
 export function parseSections(content: string): ParsedSection[] {
 	const res = [];
 	const section: ParsedSection = {
@@ -74,10 +76,23 @@ export function parseSections(content: string): ParsedSection[] {
 		headline: '',
 	};
 
+	let withinPreamble = false;
+	let index = 0;
 	for (const line of content.split('\n')) {
 		const cleanedLine = cleanLine(line);
 
-		if (line.startsWith('>')) {
+		if (line.startsWith('---')) {
+			if (index === 0) {
+				withinPreamble = true;
+			} else if (withinPreamble) {
+				withinPreamble = false;
+			}
+		}
+
+		index++;
+
+		const startsWithIgnorePrefix = IGNORE_LINE_PREFIXES.some((prefix) => line.startsWith(prefix));
+		if (withinPreamble || startsWithIgnorePrefix) {
 			continue;
 		}
 
@@ -107,10 +122,26 @@ export function parseSections(content: string): ParsedSection[] {
 	return res;
 }
 
+function compressAnchor(anchor: string) {
+	return anchor.replaceAll('-', '');
+}
+
+function anchorsCompressedEqual(one?: string, other?: string) {
+	if (!one || !other) {
+		return false;
+	}
+
+	const one_ = compressAnchor(one);
+	const other_ = compressAnchor(other);
+
+	return one_ === other_;
+}
+
 export function findRelevantDocsSection(query: string, docsMd: string) {
 	const sections = parseSections(docsMd);
 	for (const section of sections) {
-		if (section.heading?.docs_anchor.startsWith(query)) {
+		const anchor = section.heading?.docs_anchor;
+		if (anchor?.startsWith(query) || anchorsCompressedEqual(anchor, query)) {
 			return section;
 		}
 	}
@@ -122,7 +153,14 @@ export async function fetchDocsBody(link: string) {
 		return null;
 	}
 
-	const docsMd = await fetch(githubResource.githubUrl).then(async (res) => res.text());
+	const docsMd = await fetch(githubResource.githubUrl).then(async (res) => {
+		if (res.status === 404) {
+			// some docs pages use the .mdx format
+			return fetch(`${githubResource.githubUrl}x`).then(async (innerRes) => innerRes.text());
+		}
+
+		return res.text();
+	});
 	const section = findRelevantDocsSection(githubResource.docsAnchor, docsMd);
 
 	if (section) {

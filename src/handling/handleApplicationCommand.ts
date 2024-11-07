@@ -8,7 +8,7 @@ import { algoliaResponse } from '../functions/algoliaResponse.js';
 import { resolveOptionsToDocsAutoComplete } from '../functions/autocomplete/docsAutoComplete.js';
 import { djsDocs } from '../functions/docs.js';
 import { mdnSearch } from '../functions/mdn.js';
-import { nodeSearch } from '../functions/node.js';
+import { nodeAutoCompleteResolve } from '../functions/node.js';
 import type { Tag } from '../functions/tag.js';
 import { showTag, reloadTags } from '../functions/tag.js';
 import { testTag } from '../functions/testtag.js';
@@ -57,8 +57,8 @@ export async function handleApplicationCommand(
 					break;
 				}
 
-				const { query, version, ephemeral } = resolved;
-				await djsDocs(res, version, query, ephemeral);
+				const { query, version, ephemeral, source, mention } = resolved;
+				await djsDocs(res, version, query, source, mention, ephemeral);
 				break;
 			}
 
@@ -72,6 +72,7 @@ export async function handleApplicationCommand(
 					castArgs.query,
 					EMOJI_ID_CLYDE_BLURPLE,
 					'discord',
+					castArgs.mention,
 					castArgs.hide,
 				);
 				break;
@@ -79,7 +80,6 @@ export async function handleApplicationCommand(
 
 			case 'dtypes': {
 				const castArgs = args as ArgumentsOf<typeof DTypesCommand>;
-
 				await algoliaResponse(
 					res,
 					process.env.DTYPES_ALGOLIA_APP!,
@@ -88,6 +88,7 @@ export async function handleApplicationCommand(
 					castArgs.query,
 					EMOJI_ID_DTYPES,
 					'dtypes',
+					castArgs.mention,
 					castArgs.hide,
 				);
 
@@ -104,26 +105,28 @@ export async function handleApplicationCommand(
 					castArgs.query,
 					EMOJI_ID_GUIDE,
 					'guide',
+					castArgs.mention,
 					castArgs.hide,
+					'guide',
 				);
 				break;
 			}
 
 			case 'mdn': {
 				const castArgs = args as ArgumentsOf<typeof MdnCommand>;
-				await mdnSearch(res, castArgs.query, castArgs.hide);
+				await mdnSearch(res, castArgs.query, castArgs.mention, castArgs.hide);
 				break;
 			}
 
 			case 'node': {
 				const castArgs = args as ArgumentsOf<typeof NodeCommand>;
-				await nodeSearch(res, castArgs.query, castArgs.version, castArgs.hide);
+				await nodeAutoCompleteResolve(res, castArgs.query, castArgs.mention, castArgs.hide);
 				break;
 			}
 
 			case 'tag': {
 				const castArgs = args as ArgumentsOf<typeof TagCommand>;
-				showTag(res, castArgs.query, tagCache, castArgs.hide);
+				showTag(res, castArgs.query, tagCache, castArgs.mention, castArgs.hide);
 				break;
 			}
 
@@ -141,7 +144,7 @@ export async function handleApplicationCommand(
 
 			case 'reloadversions': {
 				await reloadDjsVersions();
-				prepareResponse(res, `Reloaded versions for all ${inlineCode('@discordjs')} packages.`, true);
+				prepareResponse(res, `Reloaded versions for all ${inlineCode('@discordjs')} packages.`, { ephemeral: true });
 				break;
 			}
 		}

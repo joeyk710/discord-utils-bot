@@ -7,33 +7,20 @@ export const NodeCommand = {
 		{
 			type: ApplicationCommandOptionType.String,
 			name: 'query',
-			description: 'Class, method or event to search for',
+			description: 'Phrase to search for',
 			required: true,
-		},
-		{
-			type: ApplicationCommandOptionType.String,
-			name: 'version',
-			description: 'Node.js version to search documentation for',
-			required: false,
-			choices: [
-				{
-					name: 'v16',
-					value: 'latest-v16.x',
-				},
-				{
-					name: 'v18 (default)',
-					value: 'latest-v18.x',
-				},
-				{
-					name: 'v20 (current)',
-					value: 'latest-v20.x',
-				},
-			],
+			autocomplete: true,
 		},
 		{
 			type: ApplicationCommandOptionType.Boolean,
 			name: 'hide',
 			description: 'Hide command output',
+			required: false,
+		},
+		{
+			type: ApplicationCommandOptionType.User,
+			name: 'mention',
+			description: 'User to mention',
 			required: false,
 		},
 	],

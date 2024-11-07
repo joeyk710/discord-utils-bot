@@ -14,33 +14,52 @@ function removeDtypesPrefix(str: string | null) {
 	return (str ?? '').replace('discord-api-types/', '');
 }
 
+function compressHeading(heading: string) {
+	return heading.toLowerCase().replaceAll(/[ ,.=_-]/g, '');
+}
+
+function headingIsSimilar(one: string, other: string) {
+	const one_ = compressHeading(one);
+	const other_ = compressHeading(other);
+
+	return one_.startsWith(other_) || other_.startsWith(one_);
+}
+
 export function resolveHitToNamestring(hit: AlgoliaHit) {
 	const { hierarchy } = hit;
 
-	const hierarchyOneExtendsZero = (hierarchy.lvl1 ?? '').startsWith(hierarchy.lvl0 ?? '');
+	const [lvl0, lvl1, ...restLevels] = Object.values(hierarchy)
+		.filter(Boolean)
+		.map((heading) => removeDtypesPrefix(heading));
 
-	const lvl0 = removeDtypesPrefix(hierarchy.lvl0);
-	const lvl1 = removeDtypesPrefix(hierarchy.lvl1);
+	const headingParts = [];
 
-	let value = hierarchyOneExtendsZero ? lvl1 : `${lvl0}${lvl1 ? `: ${lvl1}` : ''}`;
-
-	if (hierarchy.lvl2) {
-		value += ` - ${hierarchy.lvl2}`;
+	if (headingIsSimilar(lvl0, lvl1)) {
+		headingParts.push(lvl1);
+	} else {
+		headingParts.push(`${lvl0}:`, lvl1);
 	}
 
-	if (hierarchy.lvl3) {
-		value += ` > ${hierarchy.lvl3}`;
+	const mostSpecific = restLevels.at(-1);
+	if (mostSpecific?.length && mostSpecific !== lvl0 && mostSpecific !== lvl1) {
+		headingParts.push(`- ${mostSpecific}`);
 	}
 
-	return decode(value)!;
+	return decode(headingParts.join(' '))!;
 }
 
 function autoCompleteMap(elements: AlgoliaHit[]) {
 	const uniqueElements = elements.filter(dedupeAlgoliaHits());
-	return uniqueElements.map((element) => ({
-		name: truncate(resolveHitToNamestring(element), 90, ''),
-		value: compactAlgoliaObjectId(element.objectID),
-	}));
+	return uniqueElements
+		.filter((element) => {
+			const value = compactAlgoliaObjectId(element.objectID);
+			// API restriction. Cannot resolve from truncated, so filtering here.
+			return value.length <= 100;
+		})
+		.map((element) => ({
+			name: truncate(resolveHitToNamestring(element), 100, ''),
+			value: compactAlgoliaObjectId(element.objectID),
+		}));
 }
 
 export async function algoliaAutoComplete(

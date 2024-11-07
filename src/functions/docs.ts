@@ -1,6 +1,5 @@
 import process from 'node:process';
 import { bold, codeBlock, hyperlink, inlineCode, strikethrough, underline } from '@discordjs/builders';
-import { InteractionResponseType } from 'discord-api-types/v10';
 import type { Response } from 'polka';
 import { fetch } from 'undici';
 import {
@@ -26,6 +25,9 @@ import {
 import { logger } from '../util/logger.js';
 import { prepareErrorResponse, prepareResponse } from '../util/respond.js';
 import { truncate } from '../util/truncate.js';
+import { parseDocsPath } from './autocomplete/docsAutoComplete.js';
+
+const BASE_SEARCH = 'https://search.discordjs.dev/';
 
 /**
  * Vercel blob store format
@@ -41,6 +43,54 @@ type CacheEntry = {
 };
 
 const docsCache = new Map<string, CacheEntry>();
+
+function searchURL(pack: string, version: string) {
+	return `${BASE_SEARCH}indexes/${pack}-${version.replaceAll('.', '-')}/search`;
+}
+
+function sanitizeText(name: string) {
+	return name.replaceAll('*', '');
+}
+
+export async function queryDocs(query: string, pack: string, version: string) {
+	const searchRes = await fetch(searchURL(pack, version), {
+		method: 'post',
+		body: JSON.stringify({
+			limit: 25,
+			// eslint-disable-next-line id-length
+			q: query,
+			attributesToSearchOn: ['name'],
+			sort: ['type:asc'],
+		}),
+		headers: {
+			Authorization: `Bearer ${process.env.DJS_DOCS_BEARER!}`,
+			'Content-Type': 'application/json',
+		},
+	});
+
+	const docsResult = (await searchRes.json()) as any;
+
+	return {
+		...docsResult,
+		hits: docsResult.hits.map((hit: any) => {
+			const parsed = parseDocsPath(hit.path);
+
+			const isMember = ['Property', 'Method', 'Event', 'PropertySignature', 'EnumMember'].includes(hit.kind);
+			const parts = [parsed.package, parsed.item.toLocaleLowerCase(), parsed.kind];
+
+			if (isMember && parsed.method) {
+				parts.push(parsed.method);
+			}
+
+			return {
+				...hit,
+				autoCompleteName: truncate(`${hit.name}${hit.summary ? ` - ${sanitizeText(hit.summary)}` : ''}`, 100, ' '),
+				autoCompleteValue: parts.join('|'),
+				isMember,
+			};
+		}),
+	};
+}
 
 export async function fetchDocItem(
 	_package: string,
@@ -111,10 +161,11 @@ function docsLink(item: any, _package: string, version: string, attribute?: stri
 }
 
 function preparePotential(potential: any, member: any, topLevelDisplayName: string): any | null {
+	const isMethod = potential.kind === 'Method';
 	if (potential.displayName?.toLowerCase() === member.toLowerCase()) {
 		return {
 			...potential,
-			displayName: `${topLevelDisplayName}#${potential.displayName}`,
+			displayName: `${topLevelDisplayName}#${potential.displayName}${isMethod ? '()' : ''}`,
 		};
 	}
 
@@ -151,13 +202,34 @@ function effectiveItem(item: any, member?: string) {
 function formatSummary(blocks: any[], _package: string, version: string) {
 	return blocks
 		.map((block) => {
-			if (block.kind === 'LinkTag') {
-				return hyperlink(block.text, `${DJS_DOCS_BASE}/packages/${_package}/${version}/${block.uri}`);
+			if (block.kind === 'LinkTag' && block.uri) {
+				const isFullLink = block.uri.startsWith('http');
+				const link = isFullLink ? block.uri : `${DJS_DOCS_BASE}/packages/${_package}/${version}/${block.uri}`;
+				return hyperlink(block.members ? `${block.text}${block.members}` : block.text, link);
 			}
 
 			return block.text;
 		})
 		.join('');
+}
+
+function formatExample(blocks?: any[]) {
+	const comments: string[] = [];
+
+	if (!blocks) {
+		return;
+	}
+
+	for (const block of blocks) {
+		if (block.kind === 'PlainText' && block.text.length) {
+			comments.push(`// ${block.text}`);
+			continue;
+		}
+
+		if (block.kind === 'FencedCode') {
+			return codeBlock(block.language, `${comments.join('\n')}\n${block.text}`);
+		}
+	}
 }
 
 function formatItem(_item: any, _package: string, version: string, member?: string) {
@@ -179,10 +251,6 @@ function formatItem(_item: any, _package: string, version: string, member?: stri
 
 	parts.push(underline(bold(hyperlink(item.displayName, itemLink))));
 
-	if (item.extends) {
-		// TODO format extends
-	}
-
 	const head = `<:${emojiName}:${emojiId}>`;
 	const tail = `  ${hyperlink(inlineCode(`@${version}`), sourceUrl, 'source code')}`;
 	const middlePart = item.isDeprecated ? strikethrough(parts.join(' ')) : parts.join(' ');
@@ -191,7 +259,7 @@ function formatItem(_item: any, _package: string, version: string, member?: stri
 
 	const summary = item.summary?.summarySection;
 	const deprecationNote = item.summary?.deprecatedBlock;
-	const example = item.summary?.exampleBlocks?.[0];
+	const example = formatExample(item.summary?.exampleBlocks);
 
 	if (deprecationNote?.length) {
 		lines.push(`${bold('[DEPRECATED]')} ${formatSummary(deprecationNote, _package, version)}`);
@@ -201,31 +269,53 @@ function formatItem(_item: any, _package: string, version: string, member?: stri
 		}
 
 		if (example) {
-			lines.push(codeBlock(example.language, example.text));
+			lines.push(example);
 		}
 	}
 
 	return lines.join('\n');
 }
 
-export async function djsDocs(res: Response, branch: string, query: string, ephemeral = false) {
-	const [_package, itemName, itemKind, member] = query.split('|');
+async function resolveDjsDocsQuery(query: string, source: string, branch: string) {
+	if (query.includes('|')) {
+		return query;
+	} else {
+		const searchResult = await queryDocs(query, source, branch);
+		const bestHit = searchResult.hits[0];
+		if (bestHit) {
+			return bestHit.autoCompleteValue;
+		}
 
+		return null;
+	}
+}
+
+export async function djsDocs(
+	res: Response,
+	branch: string,
+	_query: string,
+	source: string,
+	user?: string,
+	ephemeral?: boolean,
+) {
 	try {
+		const query = await resolveDjsDocsQuery(_query, source, branch);
+		if (!query) {
+			prepareErrorResponse(res, 'Cannot find any hits for the provided query - consider using auto complete.');
+			return res.end();
+		}
+
+		const [_package, itemName, itemKind, member] = query.split('|');
 		const item = await fetchDocItem(_package, branch, itemName, itemKind.toLowerCase());
 		if (!item) {
 			prepareErrorResponse(res, `Could not fetch doc entry for query ${inlineCode(query)}.`);
 			return res.end();
 		}
 
-		prepareResponse(
-			res,
-			truncate(formatItem(item, _package, branch, member), MAX_MESSAGE_LENGTH),
+		prepareResponse(res, truncate(formatItem(item, _package, branch, member), MAX_MESSAGE_LENGTH), {
 			ephemeral,
-			[],
-			[],
-			InteractionResponseType.ChannelMessageWithSource,
-		);
+			suggestion: user ? { userId: user, kind: 'documentation' } : undefined,
+		});
 		return res.end();
 	} catch (_error) {
 		const error = _error as Error;

@@ -6,19 +6,12 @@ import type {
 } from 'discord-api-types/v10';
 import { ApplicationCommandOptionType, InteractionResponseType } from 'discord-api-types/v10';
 import type { Response } from 'polka';
-import { fetch } from 'undici';
 import { AUTOCOMPLETE_MAX_ITEMS } from '../../util/constants.js';
 import { getDjsVersions } from '../../util/djsdocs.js';
 import { logger } from '../../util/logger.js';
-import { truncate } from '../../util/truncate.js';
+import { queryDocs } from '../docs.js';
 
-const BASE_SEARCH = `https://search.discordjs.dev/`;
-
-function searchURL(pack: string, version: string) {
-	return `${BASE_SEARCH}indexes/${pack}-${version.replaceAll('.', '-')}/search`;
-}
-
-function parseDocsPath(path: string) {
+export function parseDocsPath(path: string) {
 	// /0   /1       /2       /3   /4
 	// /docs/packages/builders/main/EmbedBuilder:Class
 	// /docs/packages/builders/main/EmbedImageData:Interface#proxyURL
@@ -43,6 +36,10 @@ function parseDocsPath(path: string) {
 	};
 }
 
+function convertToDottedName(dashed: string) {
+	return dashed.replaceAll('-', '.');
+}
+
 export async function djsAutoComplete(
 	res: Response,
 	options: APIApplicationCommandInteractionDataOption[],
@@ -63,29 +60,8 @@ export async function djsAutoComplete(
 		throw new Error('expected query option, none received');
 	}
 
-	const version = versionOptionData?.value ?? versions.versions.get(option.name)?.at(1) ?? 'main';
-
-	const searchRes = await fetch(searchURL(option.name, version), {
-		method: 'post',
-		body: JSON.stringify({
-			limit: 100,
-			// eslint-disable-next-line id-length
-			q: queryOptionData.value,
-		}),
-		headers: {
-			Authorization: `Bearer ${process.env.DJS_DOCS_BEARER!}`,
-			'Content-Type': 'application/json',
-		},
-	});
-
-	const docsResult = (await searchRes.json()) as any;
-	docsResult.hits.sort((one: any, other: any) => {
-		const oneScore = one.kind === 'Class' ? 1 : 0;
-		const otherScore = other.kind === 'Class' ? 1 : 0;
-
-		return otherScore - oneScore;
-	});
-
+	const version = versionOptionData?.value ?? versions.versions.get(convertToDottedName(option.name))?.at(1) ?? 'main';
+	const docsResult = await queryDocs(queryOptionData.value, option.name, version);
 	const choices = [];
 
 	for (const hit of docsResult.hits) {
@@ -93,26 +69,9 @@ export async function djsAutoComplete(
 			break;
 		}
 
-		const parsed = parseDocsPath(hit.path);
-
-		let name = '';
-		const isMember = ['Property', 'Method', 'Event', 'PropertySignature', 'EnumMember'].includes(hit.kind);
-		if (isMember) {
-			name += `${parsed.item}#${hit.name}${hit.kind === 'Method' ? '()' : ''}`;
-		} else {
-			name += hit.name;
-		}
-
-		const itemKind = isMember ? 'Class' : hit.kind;
-		const parts = [parsed.package, parsed.item.toLocaleLowerCase(), parsed.kind];
-
-		if (isMember) {
-			parts.push(hit.name);
-		}
-
 		choices.push({
-			name: truncate(`${name}${hit.summary ? ` - ${hit.summary}` : ''}`, 100, ' '),
-			value: parts.join('|'),
+			name: hit.autoCompleteName,
+			value: hit.autoCompleteValue,
 		});
 	}
 
@@ -130,6 +89,7 @@ export async function djsAutoComplete(
 
 type DocsAutoCompleteData = {
 	ephemeral?: boolean;
+	mention?: string;
 	query: string;
 	source: string;
 	version: string;
@@ -147,11 +107,12 @@ export function resolveOptionsToDocsAutoComplete(
 		return undefined;
 	}
 
-	const versions = allversions.versions.get(source.replaceAll('-', '.'));
+	const versions = allversions.versions.get(convertToDottedName(source));
 
 	let query = 'Client';
 	let version = versions?.at(1) ?? 'main';
 	let ephemeral;
+	let mention;
 
 	logger.debug(
 		{
@@ -160,6 +121,7 @@ export function resolveOptionsToDocsAutoComplete(
 				versions,
 				version,
 				ephemeral,
+				mention,
 				source,
 			},
 		},
@@ -177,6 +139,8 @@ export function resolveOptionsToDocsAutoComplete(
 			}
 		} else if (opt.type === ApplicationCommandOptionType.Boolean && opt.name === 'hide') {
 			ephemeral = opt.value;
+		} else if (opt.type === ApplicationCommandOptionType.User && opt.name === 'mention') {
+			mention = opt.value;
 		}
 	}
 
@@ -185,5 +149,6 @@ export function resolveOptionsToDocsAutoComplete(
 		source,
 		ephemeral,
 		version,
+		mention,
 	};
 }
