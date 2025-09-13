@@ -5,7 +5,7 @@ import { config } from 'dotenv';
 import { fetch } from 'undici';
 import { API_BASE_DISCORD } from '../util/constants.js';
 import { logger } from '../util/logger.js';
-import { PrerepeaseApplicationCommandContextType, PrerepeaseApplicationIntegrationType } from './auxtypes.js';
+import { PreReleaseApplicationCommandContextType, PreReleaseApplicationIntegrationType } from './auxtypes.js';
 
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../../.env') });
 
@@ -27,15 +27,15 @@ export async function deploy(data: any, dev = false) {
 					: data.map((command: any) => ({
 							...command,
 							integration_types: [
-								PrerepeaseApplicationIntegrationType.UserInstall,
-								PrerepeaseApplicationIntegrationType.GuildInstall,
+								PreReleaseApplicationIntegrationType.UserInstall,
+								PreReleaseApplicationIntegrationType.GuildInstall,
 							],
 							contexts: [
-								PrerepeaseApplicationCommandContextType.Guild,
-								PrerepeaseApplicationCommandContextType.PrivateChannel,
-								PrerepeaseApplicationCommandContextType.BotDm,
+								PreReleaseApplicationCommandContextType.Guild,
+								PreReleaseApplicationCommandContextType.PrivateChannel,
+								PreReleaseApplicationCommandContextType.BotDm,
 							],
-					  })),
+						})),
 			),
 		}).then(async (response) => response.json());
 		logger.info(res as string);

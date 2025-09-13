@@ -15,6 +15,7 @@ enum ConflictType {
 	NoWhiteSpace,
 	NameNotInKeywords,
 	Status404Link,
+	NameLowercase,
 }
 
 type Conflict = {
@@ -121,6 +122,15 @@ export async function validateTags(
 			});
 		}
 
+		if (key !== key.toLowerCase()) {
+			conflicts.push({
+				firstName: key,
+				secondName: '',
+				conflictKeyWords: [],
+				type: ConflictType.NameLowercase,
+			});
+		}
+
 		if (tag.keywords.some((keyword) => !keyword.replaceAll(/\s+/g, '').length)) {
 			conflicts.push({
 				firstName: key,
@@ -182,6 +192,7 @@ export async function validateTags(
 			noWhiteSpaceConflicts,
 			status404LinkConflicts,
 			nameNotInKeywordsConflicts,
+			nameLowercaseConflicts,
 		} = conflicts.reduce(
 			(a, conflict) => {
 				switch (conflict.type) {
@@ -202,6 +213,9 @@ export async function validateTags(
 						break;
 					case ConflictType.Status404Link:
 						a.status404LinkConflicts.push(conflict);
+						break;
+					case ConflictType.NameLowercase:
+						a.nameLowercaseConflicts.push(conflict);
 				}
 
 				return a;
@@ -213,6 +227,7 @@ export async function validateTags(
 				emptyBodyConflicts: [] as Conflict[],
 				noWhiteSpaceConflicts: [] as Conflict[],
 				status404LinkConflicts: [] as Conflict[],
+				nameLowercaseConflicts: [] as Conflict[],
 			},
 		);
 
@@ -241,6 +256,14 @@ export async function validateTags(
 		if (emptyBodyConflicts.length) {
 			parts.push(
 				`Tag validation error: Tag body cannot be empty:\n${emptyBodyConflicts
+					.map((conflict, index) => kleur.red(`${index}. [${conflict.firstName}]`))
+					.join('\n')}`,
+			);
+		}
+
+		if (nameLowercaseConflicts.length) {
+			parts.push(
+				`Tag validation error: Tag name has to be lowercase:\n${nameLowercaseConflicts
 					.map((conflict, index) => kleur.red(`${index}. [${conflict.firstName}]`))
 					.join('\n')}`,
 			);

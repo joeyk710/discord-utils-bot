@@ -46,7 +46,7 @@ content = """
 [selectmenu-limits]
 keywords = ["sm-limits", "select-menu-limits"]
 content = """
-Learn more about select menu limits at the [Discord Developer Documentation](https://discord.com/developers/docs/interactions/message-components#select-menus)
+Learn more about select menu limits at the [Discord Developer Documentation](https://discord.com/developers/docs/components/reference#string-select)
 """
 
 [slash-limits]
@@ -198,7 +198,7 @@ content = """
 const channel = client.channels.cache.get("222086648706498562");
 const channel = guild.channels.cache.find(channel => channel.name === "general");
 ```
-- Caches in discord.js are [Collections](https://discord.js.org/docs/packages/collection/stable) which extend the native [Map](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map) structure.
+- Caches in discord.js are [Collections](https://discord.js.org/docs/packages/collection/stable) which extend the native [Map](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Map) structure.
 - [learn more](https://discordjs.guide/additional-info/collections.html)
 """
 
@@ -259,8 +259,7 @@ content = """
 [buildtools]
 keywords = ["windows-build-tools", "build-tools", "node-gyp", "gyp", "wbt"]
 content = """
-- Run `npm i windows-build-tools --production --vs2015 --add-python-to-PATH --global` as admin.
-- Restart your terminal or machine (if terminal is not sufficient).
+To resolve troubles with using node gyp, re-install node and tick the box "Automatically install the necessary tools."
 """
 
 [get-undefined]
@@ -365,7 +364,7 @@ Explaining `<Class>` and `Class#method` notation: [learn more](https://discordjs
 [collection]
 keywords = ["collections", "collection-methods"]
 content = """
-discord.js uses [Collection](https://discord.js.org/docs/packages/collection/stable), an extension of the JS native [Map](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map) structure.
+discord.js uses [Collection](https://discord.js.org/docs/packages/collection/stable), an extension of the JS native [Map](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Map) structure.
 - Guide: [learn more](https://discordjs.guide/additional-info/collections.html) [🍪](https://gist.github.com/almostSouji/71a33e5f8e84a0960b4ed3a1609915f5)
 """
 hoisted = true
@@ -384,7 +383,7 @@ keywords = ["undici", "node-fetch", "http-requests", "call-rest-apis"]
 content = """
 Making HTTP requests (for example to call rest APIs)
 - Node: [learn more](https://www.npmjs.com/package/undici)
-- MDN: [learn more](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) 
+- MDN: [learn more](https://developer.mozilla.org/docs/Web/API/Fetch_API) 
 """
 
 [opus]
@@ -398,8 +397,8 @@ content = """
 [undefined]
 keywords = ["not-defined", "of-null", "of-undefined", "ofnull", "ofundefined"]
 content = """
-- `ReferenceError: "x" is not defined`: [learn more](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Not_defined)
-- `TypeError: Cannot read properties of undefined/null (reading "x")`: [learn more](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cant_access_property)
+- `ReferenceError: "x" is not defined`: [learn more](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Errors/Not_defined)
+- `TypeError: Cannot read properties of undefined/null (reading "x")`: [learn more](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Errors/Cant_access_property)
 """
 hoisted = true
 
@@ -430,7 +429,7 @@ Your bot is trying to send a DM to a user, but failed to do so:
 - The user has DMs disabled or the bot blocked
 - The user no longer shares a guild with the bot (make sure to send informational DMs before banning/kicking)
 - The bot is trying to DM itself or another bot
-Note: You cannot check if you can send a DM beforehand but have to handle the [rejection case](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch)
+Note: You cannot check if you can send a DM beforehand but have to handle the [rejection case](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/try...catch)
 """
 
 [path]
@@ -462,7 +461,7 @@ keywords = [
 ]
 content = """
 Persisting data through restarts requires a database. Check out the resources below to figure out which database fits your use case
-- PostgreSQL: [learn more](https://www.postgresql.org) | [tutorial](http://www.postgresqltutorial.com)
+- PostgreSQL: [learn more](https://www.postgresql.org) | [tutorial](https://neon.com/postgresql/tutorial)
 - MariaDB: [learn more](https://mariadb.org/)
 - MongoDB: [learn more](https://www.mongodb.com) | [tutorials ](https://www.mongodb.com/docs/manual/tutorial/)
 - SQLite: [learn more](https://www.sqlite.org/index.html) | [tutorial](https://www.sqlitetutorial.net/)
@@ -472,7 +471,7 @@ Persisting data through restarts requires a database. Check out the resources be
 keywords = ["delay", "sleep", "setTimeout"]
 content = """
 ```js
-const { setTimeout } = require('timers/promises');
+import { setTimeout } from 'node:timers/promises';
 // using async/await
 await setTimeout(5000);
 ...
@@ -519,7 +518,7 @@ keywords = ["massdm", "dmall", "dmal-all"]
 content = """
 Mass DMing users is not allowed as per developer ToS, considered spam and can get you and your bot banned.
 - Mention `@everyone` to inform all your users at once instead
-- Discord Developer Terms of Service: [learn more](https://discord.com/developers/docs/legal) | [FAQ summary](https://gist.github.com/meew0/a3168b8fbb02d5a5456a06461b9e829e)
+- Discord Developer Terms of Service: [learn more](https://support-dev.discord.com/hc/articles/8562894815383)
 """
 
 [codeblock]
@@ -527,12 +526,12 @@ keywords = ["code-block", "code-blocks", "cb", "code-box", "codebox"]
 content = """
 **Codeblocks:**
 \\`\\`\\`js
-const Discord = require("discord.js"); 
+import { Client } from "discord.js";
 // further code
 \\`\\`\\`
 becomes
 ```js
-const Discord = require("discord.js"); 
+import { Client } from "discord.js";
 // further code
 ```
 **Inline Code:**
@@ -594,7 +593,7 @@ keywords = [
 ]
 content = """
 Resources to understand Promise:
-- MDN: [learn more](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises)
+- MDN: [learn more](https://developer.mozilla.org/docs/Web/JavaScript/Guide/Using_promises)
 - Guide: [learn more](https://discordjs.guide/additional-info/async-await.html)
 - JavaScript info: [learn more](https://javascript.info/async-await)
 """
@@ -630,7 +629,7 @@ x = 1; // assigning a value to x
 '1' == 1 // true
 '1' === 1 // false
 ```
-- Equality and sameness in JavaScript: [learn more](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Equality_comparisons_and_sameness)
+- Equality and sameness in JavaScript: [learn more](https://developer.mozilla.org/docs/Web/JavaScript/Equality_comparisons_and_sameness)
 """
 
 [timers]
@@ -645,7 +644,7 @@ keywords = [
 ]
 content = """
 Controlling the flow of time in Node.js:
-- Guide on base Node.js timers: [learn more](https://nodejs.org/en/docs/guides/timers-in-node/)
+- Guide on base Node.js timers: [learn more](https://nodejs.org/en/learn/asynchronous-work/discover-javascript-timers)
 """
 
 [paste-code]
@@ -673,7 +672,7 @@ Checking for things to not be equal in JavaScript:
 - if (!yourVariable === yourOtherVariable) // !yourVariable is coerced to a boolean value
 + if (yourVariable !== yourOtherVariable) // checks that one is not equal to the other
 ```
-- Comparison operators in JavaScript: [learn more](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Expressions_and_Operators#Comparison)
+- Comparison operators in JavaScript: [learn more](https://developer.mozilla.org/docs/Web/JavaScript/Guide/Expressions_and_Operators#Comparison)
 """
 
 [member-user]
@@ -699,7 +698,7 @@ content = """
 `Error [VoiceConnectionTimeout]: Connection not established within 15 seconds.`
 Make sure you have provided the `GuildVoiceStates` intent to the client:
 ```js
-const { Client, GatewayIntentBits } = require('discord.js');
+import { Client, GatewayIntentBits } = from 'discord.js';
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates]
 });
@@ -716,9 +715,9 @@ keywords = [
 content = """
 **We do not provide any help with third party libraries**
 discord.js supports message components natively.
-- Select Menus: [learn more](https://discordjs.guide/message-components/select-menus.html)
-- Buttons: [learn more](https://discordjs.guide/message-components/buttons.html)
-- Modals: [learn more](https://discordjs.guide/interactions/modals.html)
+- Select Menus: [learn more](https://discordjs.guide/interactive-components/select-menus)
+- Buttons: [learn more](https://discordjs.guide/interactive-components/buttons)
+- Modals: [learn more](https://discordjs.guide/interactions/modals)
 """
 
 [find-id]
@@ -750,7 +749,7 @@ client
     .on("warn", console.log)
 ```
 - Note: if you initialize your Client as `bot` or other identifiers you need to use these instead of `client`
-- If the output is too long to post consider using a bin instead: [gist](https://gist.github.com) | [paste.gg](https://paste.gg/) | [sourceb.in](https://sourceb.in) | [hastebin](https://hastebin.com)
+- If the output is too long to post consider using a bin instead: [gist](https://gist.github.com) | [sourceb.in](https://sourceb.in) | [hastebin](https://www.toptal.com/developers/hastebin)
 """
 hoisted = true
 
@@ -862,9 +861,7 @@ content = """
 [privileged-intents]
 keywords = ["privileged", "p-intents", "whitelisted-intents"]
 content = """
-- `Error [DisallowedIntents]: Privileged intent provided is not enabled or whitelisted.`
-- `Error: Used disallowed intents`
-
+`Error: Used disallowed intents`
 If you are using the `GuildMembers`, `GuildPresences`, or `MessageContent` intents, you need to enable them via [Developer Portal](https://discord.com/developers/applications) > Your app > Bot > Privileged Gateway Intents
 """
 
@@ -873,9 +870,9 @@ keywords = ["cta", "collection-to-array"]
 content = """
 **Converting a Collection to an array**
 You only need to convert it to an array if you need the index of an entry:
-- Iteration (looping) is possible with [`for...of`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for...of#iterating_over_a_map) over [`Collection#values`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map/values) or [`forEach`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map/forEach)
+- Iteration (looping) is possible with [`for...of`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/for...of#iterating_over_a_map) over [`Collection#values`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Map/values) or [`forEach`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Map/forEach)
 - You can transform a Collection to an array with [`Collection#map`](https://discord.js.org/docs/packages/collection/stable/Collection:Class#map)
-- If you need indices, you can get the array using [`[...collection.values()]`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map/values)
+- If you need indices, you can get the array using [`[...collection.values()]`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Map/values)
 """
 
 [member-count]
@@ -917,7 +914,7 @@ content = """
 You have already replied to the interaction.
 - Use `<Interaction>.followUp()` to send a new message
 - If you deferred reply it's better to use `<Interaction>.editReply()`
-- Responding to [slash commands](https://discordjs.guide/slash-commands/response-methods.html) / [message components](https://discordjs.guide/message-components/interactions.html#responding-to-component-interactions)
+- Responding to [slash commands](https://discordjs.guide/slash-commands/response-methods.html) / [message components](https://discordjs.guide/interactive-components/interactions.html#responding-to-component-interactions)
 """
 
 [djs-sponsor]
@@ -927,7 +924,7 @@ Like what we do and want to put some money behind it? Donate to discord.js and r
 - [OpenCollective](https://opencollective.com/discordjs): Use </claim-sponsor:1046604458991300619> and provide your OC slug *(Settings > Info > URL slug)*
 - [GitHub Sponsors](https://github.com/sponsors/discordjs):
 **1)** Create a private [gist](https://gist.github.com/)
-**2)** Include your [Discord user ID](https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-) (`348607796335607817`)
+**2)** Include your [Discord user ID](https://support.discord.com/hc/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-) (`348607796335607817`)
 **3)** Include your Transaction id or screenshot of the donation
 **4)** Send the link to the gist to <@81440962496172032> (`crawl`) via direct message
 """
@@ -948,7 +945,7 @@ content = """
 If you aren't getting content, embeds or attachments of a message, make sure you have the `MessageContent` intent [enabled in the Developer Portal](https://discord.com/developers/applications) and provide it to your client:
 
 ```js
-const { Client, GatewayIntentBits } = require('discord.js');
+import { Client, GatewayIntentBits } from 'discord.js';
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
@@ -1091,9 +1088,9 @@ keywords = ["functions", "utils"]
 content = """
 The `Util` class has been removed. Associated functions are now available as top-level imports:
 ```diff
-- const { Util } = require('discord.js');
+- import { Util } = from 'discord.js';
 - Util.escapeMarkdown('`string`');
-+ const { escapeMarkdown } = require('discord.js');
++ import { escapeMarkdown } = from 'discord.js';
 + escapeMarkdown('`string`');
 ```
 """
@@ -1213,11 +1210,31 @@ discord.js does not support features until they are officially documented.
 While there might be a way for these features to work, it can change at any time without any notice 
 """
 
-[partial-group-dm]
-keywords = ["group-dm", "send-does-not-exist"]
+[ephemeral] 
+keywords = ["ephemeral-deprecated"]
 content = """ 
-Bots cannot send messages in partial group dm channels.
-Use `if ('send' in channel)` or compare `channel.type` to mitigate this.
-A fix will be implemented in 14.16.2, where you can use `channel.isSendable()`
+The `ephemeral` option when replying to an interaction will be removed in v15
+```diff
+- {..., ephemeral: true}
++ {..., flags: MessageFlags.Ephemeral}
+``` Read [here](<https://developer.mozilla.org/docs/Web/JavaScript/Reference/Operators/Bitwise_OR>) on how to specify multiple flags
 """
 
+[entry-point] 
+keywords = ["50240", "remove-entry-point"]
+content = """ 
+You have enabled activities in the Activity Settings on the Developer Portal.
+Either do not enable them if you do not need them, or include the command that was created in the request body.
+"""
+
+[fetchreply] 
+keywords = ["fetchReply-deprecated"]
+content = """ 
+The `fetchReply` option when replying to an interaction will be removed in v15.
+```diff
+- {..., fetchReply: true}
++ {..., withResponse: true}
+
+```This returns an [InteractionCallbackResponse](https://discord.js.org/docs/packages/discord.js/stable/InteractionCallbackResponse:Class)
+Use `<InteractionCallbackResponse>.resource.message` to get the message
+"""

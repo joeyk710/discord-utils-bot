@@ -25,16 +25,13 @@ import {
 import { logger } from '../util/logger.js';
 import { prepareErrorResponse, prepareResponse } from '../util/respond.js';
 import { truncate } from '../util/truncate.js';
-import { parseDocsPath } from './autocomplete/docsAutoComplete.js';
-
-const BASE_SEARCH = 'https://search.discordjs.dev/';
 
 /**
- * Vercel blob store format
+ * Bucket format
  *
  * Format: path/pkg/item
  * Item: branch.itemName.itemKind.api.json
- * Example: https://bpwrdvqzqnllsihg.public.blob.vercel-storage.com/rewrite/discord.js/main.actionrow.class.api.json
+ * Key Example: discord.js/main.actionrow.class.api.json
  */
 
 type CacheEntry = {
@@ -44,70 +41,31 @@ type CacheEntry = {
 
 const docsCache = new Map<string, CacheEntry>();
 
-function searchURL(pack: string, version: string) {
-	return `${BASE_SEARCH}indexes/${pack}-${version.replaceAll('.', '-')}/search`;
-}
-
-function sanitizeText(name: string) {
-	return name.replaceAll('*', '');
-}
-
-export async function queryDocs(query: string, pack: string, version: string) {
-	const searchRes = await fetch(searchURL(pack, version), {
-		method: 'post',
-		body: JSON.stringify({
-			limit: 25,
-			// eslint-disable-next-line id-length
-			q: query,
-			attributesToSearchOn: ['name'],
-			sort: ['type:asc'],
-		}),
-		headers: {
-			Authorization: `Bearer ${process.env.DJS_DOCS_BEARER!}`,
-			'Content-Type': 'application/json',
-		},
-	});
-
-	const docsResult = (await searchRes.json()) as any;
-
-	return {
-		...docsResult,
-		hits: docsResult.hits.map((hit: any) => {
-			const parsed = parseDocsPath(hit.path);
-
-			const isMember = ['Property', 'Method', 'Event', 'PropertySignature', 'EnumMember'].includes(hit.kind);
-			const parts = [parsed.package, parsed.item.toLocaleLowerCase(), parsed.kind];
-
-			if (isMember && parsed.method) {
-				parts.push(parsed.method);
-			}
-
-			return {
-				...hit,
-				autoCompleteName: truncate(`${hit.name}${hit.summary ? ` - ${sanitizeText(hit.summary)}` : ''}`, 100, ' '),
-				autoCompleteValue: parts.join('|'),
-				isMember,
-			};
-		}),
-	};
-}
-
+/**
+ * Fetch a documentation page for a specific query
+ *
+ * @param _package - The package name
+ * @param version - The package version
+ * @param itemName - The item name
+ * @param itemKind - The type of the item as per the docs API
+ * @returns The documentation item
+ */
 export async function fetchDocItem(
 	_package: string,
-	branch: string,
+	version: string,
 	itemName: string,
 	itemKind: string,
 ): Promise<any | null> {
 	try {
-		const key = `rewrite/${_package}/${branch}.${itemName}.${itemKind}`;
+		const key = `${_package}/${version}.${itemName}.${itemKind}`;
 		const hit = docsCache.get(key);
 
 		if (hit) {
 			return hit.value;
 		}
 
-		const resourceLink = `${process.env.DJS_BLOB_STORAGE_BASE!}/${key}.api.json`;
-		logger.debug(`Requesting documentation from vercel: ${resourceLink}`);
+		const resourceLink = `${process.env.CF_STORAGE_BASE!}/${key}.api.json`;
+		logger.debug(`Requesting documentation from CF: ${resourceLink}`);
 		const value = await fetch(resourceLink).then(async (result) => result.json());
 
 		docsCache.set(key, {
@@ -121,6 +79,13 @@ export async function fetchDocItem(
 	}
 }
 
+/**
+ * Resolve item kind to the respective Discord app emoji
+ *
+ * @param itemKind - The type of item as per the docs API
+ * @param dev - Whether the item is from the dev branch (main)
+ * @returns
+ */
 function itemKindEmoji(itemKind: string, dev = false): [string, string] {
 	const lowerItemKind = itemKind.toLowerCase();
 	switch (itemKind) {
@@ -154,13 +119,30 @@ function itemKindEmoji(itemKind: string, dev = false): [string, string] {
 	}
 }
 
+/**
+ * Build a discord.js documentation link
+ *
+ * @param item - The item to generate the link for
+ * @param _package - The package name
+ * @param version - The package version
+ * @param attribute - The attribute to link to, if any
+ * @returns The formatted link
+ */
 function docsLink(item: any, _package: string, version: string, attribute?: string) {
 	return `${DJS_DOCS_BASE}/packages/${_package}/${version}/${item.displayName}:${item.kind}${
 		attribute ? `#${attribute}` : ''
 	}`;
 }
 
-function preparePotential(potential: any, member: any, topLevelDisplayName: string): any | null {
+/**
+ * Enriches item members of type "method" with a dynamically generated displayName property
+ *
+ * @param potential - The item to check and enrich
+ * @param member - The member to access
+ * @param topLevelDisplayName - The display name of the top level parent
+ * @returns The enriched item
+ */
+function enrichItem(potential: any, member: any, topLevelDisplayName: string): any | null {
 	const isMethod = potential.kind === 'Method';
 	if (potential.displayName?.toLowerCase() === member.toLowerCase()) {
 		return {
@@ -172,6 +154,13 @@ function preparePotential(potential: any, member: any, topLevelDisplayName: stri
 	return null;
 }
 
+/**
+ * Resolve an items specific member, if required.
+ *
+ * @param item - The base item to check
+ * @param member - The name of the member to access
+ * @returns The relevant item
+ */
 function effectiveItem(item: any, member?: string) {
 	if (!member) {
 		return item;
@@ -180,7 +169,7 @@ function effectiveItem(item: any, member?: string) {
 	const iterable = Array.isArray(item.members);
 	if (Array.isArray(item.members)) {
 		for (const potential of item.members) {
-			const hit = preparePotential(potential, member, item.displayName);
+			const hit = enrichItem(potential, member, item.displayName);
 			if (hit) {
 				return hit;
 			}
@@ -188,7 +177,7 @@ function effectiveItem(item: any, member?: string) {
 	} else {
 		for (const category of Object.values(item.members)) {
 			for (const potential of category as any) {
-				const hit = preparePotential(potential, member, item.displayName);
+				const hit = enrichItem(potential, member, item.displayName);
 				if (hit) {
 					return hit;
 				}
@@ -199,6 +188,14 @@ function effectiveItem(item: any, member?: string) {
 	return item;
 }
 
+/**
+ * Format documentation blocks to a summary string
+ *
+ * @param blocks - The documentation blocks to format
+ * @param _package - The package name of the package the blocks belong to
+ * @param version - The version of the package the blocks belong to
+ * @returns The formatted summary string
+ */
 function formatSummary(blocks: any[], _package: string, version: string) {
 	return blocks
 		.map((block) => {
@@ -213,6 +210,12 @@ function formatSummary(blocks: any[], _package: string, version: string) {
 		.join('');
 }
 
+/**
+ * Format documentation blocks to a code example string
+ *
+ * @param blocks - The documentation blocks to format
+ * @returns The formatted code example string
+ */
 function formatExample(blocks?: any[]) {
 	const comments: string[] = [];
 
@@ -232,10 +235,38 @@ function formatExample(blocks?: any[]) {
 	}
 }
 
+/**
+ * Format the provided docs source item to a source link, if available
+ *
+ * @param item - The docs source item to format
+ * @param _package - The package to use
+ * @param version - The version to use
+ * @returns The formatted link, if available, otherwise the provided versionstring
+ */
+function formatSourceURL(item: any, _package: string, version: string) {
+	const sourceUrl = item.sourceURL;
+	const versionString = inlineCode(`${_package}@${version}`);
+
+	if (!item.sourceURL?.startsWith('http')) {
+		return versionString;
+	}
+
+	const link = `${sourceUrl}${item.sourceLine ? `#L${item.sourceLine}` : ''}`;
+	return hyperlink(versionString, link, 'source code');
+}
+
+/**
+ * Format a documentation item to a string
+ *
+ * @param _item - The docs item to format
+ * @param _package - The package name of the packge the item belongs to
+ * @param version - The version of the package the item belongs to
+ * @param member - The specific item member to access, if any
+ * @returns The formatted documentation string for the provided item
+ */
 function formatItem(_item: any, _package: string, version: string, member?: string) {
 	const itemLink = docsLink(_item, _package, version, member);
 	const item = effectiveItem(_item, member);
-	const sourceUrl = `${item.sourceURL}#L${item.sourceLine}`;
 
 	const [emojiId, emojiName] = itemKindEmoji(item.kind, version === 'main');
 
@@ -252,14 +283,16 @@ function formatItem(_item: any, _package: string, version: string, member?: stri
 	parts.push(underline(bold(hyperlink(item.displayName, itemLink))));
 
 	const head = `<:${emojiName}:${emojiId}>`;
-	const tail = `  ${hyperlink(inlineCode(`@${version}`), sourceUrl, 'source code')}`;
+	const tail = formatSourceURL(item, _package, version);
 	const middlePart = item.isDeprecated ? strikethrough(parts.join(' ')) : parts.join(' ');
 
 	const lines: string[] = [[head, middlePart, tail].join(' ')];
 
 	const summary = item.summary?.summarySection;
+	const defaultValueBlock = item.summary?.defaultValueBlock;
 	const deprecationNote = item.summary?.deprecatedBlock;
 	const example = formatExample(item.summary?.exampleBlocks);
+	const defaultValue = defaultValueBlock ? formatSummary(defaultValueBlock, _package, version) : null;
 
 	if (deprecationNote?.length) {
 		lines.push(`${bold('[DEPRECATED]')} ${formatSummary(deprecationNote, _package, version)}`);
@@ -273,46 +306,28 @@ function formatItem(_item: any, _package: string, version: string, member?: stri
 		}
 	}
 
+	if (defaultValue?.length) {
+		lines.push(`Default value: ${inlineCode(defaultValue)}`);
+	}
+
 	return lines.join('\n');
 }
 
-async function resolveDjsDocsQuery(query: string, source: string, branch: string) {
-	if (query.includes('|')) {
-		return query;
-	} else {
-		const searchResult = await queryDocs(query, source, branch);
-		const bestHit = searchResult.hits[0];
-		if (bestHit) {
-			return bestHit.autoCompleteValue;
-		}
-
-		return null;
-	}
-}
-
-export async function djsDocs(
-	res: Response,
-	branch: string,
-	_query: string,
-	source: string,
-	user?: string,
-	ephemeral?: boolean,
-) {
+export async function djsDocs(res: Response, version: string, query: string, user?: string, ephemeral?: boolean) {
 	try {
-		const query = await resolveDjsDocsQuery(_query, source, branch);
 		if (!query) {
 			prepareErrorResponse(res, 'Cannot find any hits for the provided query - consider using auto complete.');
 			return res.end();
 		}
 
 		const [_package, itemName, itemKind, member] = query.split('|');
-		const item = await fetchDocItem(_package, branch, itemName, itemKind.toLowerCase());
+		const item = await fetchDocItem(_package, version, itemName, itemKind.toLowerCase());
 		if (!item) {
 			prepareErrorResponse(res, `Could not fetch doc entry for query ${inlineCode(query)}.`);
 			return res.end();
 		}
 
-		prepareResponse(res, truncate(formatItem(item, _package, branch, member), MAX_MESSAGE_LENGTH), {
+		prepareResponse(res, truncate(formatItem(item, _package, version, member), MAX_MESSAGE_LENGTH), {
 			ephemeral,
 			suggestion: user ? { userId: user, kind: 'documentation' } : undefined,
 		});
