@@ -7,14 +7,14 @@ import { truncate } from '../../util/truncate.js';
 
 function resolveAutocompleteName(element: OramaSearchResult) {
 	if (element.type === 'page') {
-		return element.content;
-	}
-
-	if (element.type === 'heading') {
 		return `# ${element.content}`;
 	}
 
-	return `[...] ${element.content}`;
+	if (element.type === 'heading') {
+		return `## ${element.content}`;
+	}
+
+	return element.content;
 }
 
 function autocompleteMap(elements: OramaSearchResults) {
