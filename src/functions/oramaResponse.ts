@@ -56,10 +56,8 @@ export async function oramaResponse(res: Response, resultUrl: string, user?: str
 
 	const section = findRelevantDocsSection(`#${parsed.anchor ?? parsed.endpoint}`, docsContents, !parsed.anchor);
 
-	if (section) {
-		const title = section.headline ?? parsed.endpoint ?? 'No Title';
-		contentParts.push(`<:guide:${EMOJI_ID_GUIDE}> ${bold(title)}`);
-	}
+	const title = section?.headline ?? parsed.endpoint ?? 'discord.js guide';
+	contentParts.push(`<:guide:${EMOJI_ID_GUIDE}> ${hyperlink(bold(title), parsed.guideUrl)}`);
 
 	const relevantLines = noCodeLines(section?.lines ?? []);
 	if (relevantLines.length) {
@@ -81,8 +79,6 @@ export async function oramaResponse(res: Response, resultUrl: string, user?: str
 			contentParts.push(`${description}...`);
 		}
 	}
-
-	contentParts.push(hyperlink('read more', parsed.guideUrl));
 
 	prepareResponse(res, contentParts.join('\n'), {
 		ephemeral,

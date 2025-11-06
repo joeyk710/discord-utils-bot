@@ -45,7 +45,10 @@ export async function algoliaResponse(
 			: null;
 
 		const contentParts = [
-			`<:${emojiName}:${emojiId}>  ${bold(resolveHitToNamestring(hit))}${headlineSuffix ? ` ${headlineSuffix}` : ''}`,
+			`<:${emojiName}:${emojiId}>  ${hyperlink(
+				bold(resolveHitToNamestring(hit)),
+				hit.url,
+			)}${headlineSuffix ? ` ${headlineSuffix}` : ''}`,
 		];
 
 		if (hit.content?.length) {
@@ -66,8 +69,6 @@ export async function algoliaResponse(
 				contentParts.push(descriptionParts.join(' '));
 			}
 		}
-
-		contentParts.push(`${hyperlink('read more', hideLinkEmbed(hit.url))}`);
 
 		prepareResponse(res, contentParts.join('\n'), {
 			ephemeral,
