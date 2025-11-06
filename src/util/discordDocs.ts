@@ -127,11 +127,15 @@ export function parseSections(content: string): ParsedSection[] {
 	return res;
 }
 
+function formatAnchor(text: string) {
+	return `#${text.toLowerCase().replaceAll(' ', '-').replaceAll(/[:'.]/gi, '')}`;
+}
+
 export function findRelevantDocsSection(query: string, docsMd: string, defaultFirst = false) {
 	const sections = parseSections(docsMd);
 
 	for (const section of sections) {
-		const anchor = `#${section.headline.toLowerCase().replaceAll(' ', '-').replaceAll(':', '')}`;
+		const anchor = formatAnchor(section.headline);
 
 		if (anchor === query) {
 			return section;
