@@ -174,6 +174,11 @@ export async function djsMeiliSearch(query: string, version: string) {
 
 	const docsResult = (await searchResult.json()) as any;
 
+	if (searchResult.status !== 200) {
+		logger.error(docsResult, `Received non-200 on docs autocomplete`);
+		throw new Error(docsResult);
+	}
+
 	const groupedHits = new Map<string, [string, any][]>();
 
 	for (const result of docsResult.results) {
